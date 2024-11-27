@@ -1,0 +1,206 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  KeyName:
+    Type: String
+    Default: group13_key
+
+Resources:
+ 
+  Group13VPC:
+    Type: AWS::EC2::VPC
+    Properties: 
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: Group13VPC
+
+  DefaultSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Default security group for VPC
+      VpcId: !Ref Group13VPC
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: DefaultSecurityGroup
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Group13VPC
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      Tags:
+        - Key: Name
+          Value: PublicSubnet
+
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Group13VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      Tags:
+        - Key: Name
+          Value: PrivateSubnet
+
+  PublicEC2SG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow SSH from specific IP
+      VpcId: !Ref Group13VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 171.250.164.187/32
+      Tags:
+        - Key: Name
+          Value: PublicEC2SecurityGroup
+
+  PrivateEC2SG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow SSH from Public EC2
+      VpcId: !Ref Group13VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId: !Ref PublicEC2SG
+      Tags:
+        - Key: Name
+          Value: PrivateEC2SecurityGroup
+
+  MyInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties: 
+      Tags:
+        - Key: Name
+          Value: Group13_InternetGateway
+
+  IGWAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Group13VPC
+      InternetGatewayId: !Ref MyInternetGateway
+
+  MyEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  MyNATGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      AllocationId: !GetAtt MyEIP.AllocationId
+      Tags:
+        - Key: Name
+          Value: MyNATGateway
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Group13VPC
+      Tags:
+        - Key: Name
+          Value: PublicRouteTable
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref MyInternetGateway
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Group13VPC
+      Tags:
+        - Key: Name
+          Value: PrivateRouteTable
+
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref MyNATGateway
+
+  PrivateSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet
+      RouteTableId: !Ref PrivateRouteTable
+
+  PublicEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      KeyName: !Ref KeyName
+      SecurityGroupIds:
+        - !Ref PublicEC2SG
+      SubnetId: !Ref PublicSubnet
+      ImageId: ami-06b21ccaeff8cd686
+      Tags:
+        - Key: Name
+          Value: PublicInstance
+
+  PrivateEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      KeyName: !Ref KeyName
+      SecurityGroupIds:
+        - !Ref PrivateEC2SG
+      SubnetId: !Ref PrivateSubnet
+      ImageId: ami-06b21ccaeff8cd686
+      Tags:
+        - Key: Name
+          Value: PrivateInstance
+
+Outputs:
+  VPCId:
+    Description: The VPC Id
+    Value: !Ref Group13VPC
+
+  PublicSubnetId:
+    Description: The Public Subnet Id
+    Value: !Ref PublicSubnet
+
+  PrivateSubnetId:
+    Description: The Private Subnet Id
+    Value: !Ref PrivateSubnet
+
+  InternetGatewayId:
+    Description: The Internet Gateway Id
+    Value: !Ref MyInternetGateway
+
+  NATGatewayId:
+    Description: The NAT Gateway Id
+    Value: !Ref MyNATGateway
+
+  PublicSecurityGroupId:
+    Description: The Public EC2 Security Group Id
+    Value: !Ref PublicEC2SG
+
+  PrivateSecurityGroupId:
+    Description: The Private EC2 Security Group Id
+    Value: !Ref PrivateEC2SG
