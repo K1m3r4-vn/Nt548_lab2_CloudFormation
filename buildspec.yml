@@ -13,6 +13,4 @@ phases:
     commands:
       - taskcat test run
 
-      artifacts:
-        files:
-          - '**/*'
+     
