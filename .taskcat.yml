@@ -1,18 +1,16 @@
 project:
-  name:  CFN_test
+  name: cfn-test
   regions:
     - us-east-1  
-
+  s3_bucket: group13-bucket-1
 tests:
-  test-main:
-    template: main.yml
-    parameters:
+  default:
+   template: main.yml
+   parameters:
       VpcCIDR: 10.0.0.0/16
       PublicSubnetCIDR: 10.0.1.0/24
       PrivateSubnetCIDR: 10.0.2.0/24
       NatGatewaySubnetCidr: 10.0.1.0/24
       EnableDnsSupport: 'true'
       EnableDnsHostnames: 'true'
-      KeyName: 'group13_key'
-    regions:
-      - us-east-1
+      KeyName: group13_key
