@@ -4,9 +4,9 @@ NT548 CloudFormation Guide:
 2. Create a CodeCommit repo in AWS console named 'Group13-Nt548'.
 3. Clone the CodeCommit repo to your computer.
 4. Push this repo to CodeCommit
-git add .
-git commit -m 'first commit'
-git push
+- git add .
+- git commit -m 'first commit'
+- git push
 5. Create a CodeBuild project:
    - Name: CloudformationBuild
    - Source: AWS CodeCommit
